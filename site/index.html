@@ -29,6 +29,7 @@
   <div id="status" class="muted"></div>
   <div id="results"></div>
 
+  <!-- All JS is inside this single script tag -->
   <script>
     const FN_URL = '/.netlify/functions/places';
     let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback until app sends real coords
@@ -44,7 +45,6 @@
       coordsEl.textContent = `coords: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       console.log('coords set ->', CURRENT_COORDS);
     }
-    // show fallback at start
     setCoords(CURRENT_COORDS.lat, CURRENT_COORDS.lng);
 
     // Receive coords from the React Native app
@@ -53,7 +53,6 @@
         const msg = JSON.parse(raw || '{}');
         if (msg.type === 'FW_COORDS' && msg.payload?.lat && msg.payload?.lng) {
           setCoords(msg.payload.lat, msg.payload.lng);
-          // optional: auto search on first coords
           if (!q.value) q.value = 'sushi';
           form.dispatchEvent(new Event('submit'));
         }
@@ -62,6 +61,9 @@
     window.addEventListener('message', (e) => handleFWMessage(e.data), false);
     document.addEventListener('message', (e) => handleFWMessage(e.data), false);
 
+    // Tell the native app the page is ready
+    try { window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'FW_READY' })); } catch {}
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       resultsEl.innerHTML = '';
@@ -69,7 +71,7 @@
 
       const body = {
         query: q.value.trim(),
-        lat: CURRENT_COORDS.lat,      // <-- USE CURRENT COORDS
+        lat: CURRENT_COORDS.lat,
         lng: CURRENT_COORDS.lng,
         radius: 6000
       };
@@ -104,10 +106,5 @@
       `).join('');
     }
   </script>
-  // Tell the native app that the page is ready to receive messages
-try {
-  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'FW_READY' }));
-} catch {}
-
 </body>
 </html>
