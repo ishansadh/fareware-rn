@@ -104,5 +104,10 @@
       `).join('');
     }
   </script>
+  // Tell the native app that the page is ready to receive messages
+try {
+  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'FW_READY' }));
+} catch {}
+
 </body>
 </html>
