@@ -7,8 +7,9 @@
   <style>
     body { font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; margin: 16px; }
     h1 { font-size: 18px; margin: 0 0 12px; }
-    form { display: flex; gap: 8px; margin-bottom: 12px; }
+    form { display: flex; gap: 8px; margin-bottom: 8px; }
     input, button { font-size: 16px; padding: 10px; }
+    #coords { font-size: 12px; color: #666; margin-bottom: 12px; }
     #results { display: grid; gap: 10px; }
     .card { padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
     .name { font-weight: 600; }
@@ -24,45 +25,68 @@
     <button type="submit">Search</button>
   </form>
 
+  <div id="coords" class="muted">coords: (waiting…)</div>
   <div id="status" class="muted"></div>
   <div id="results"></div>
 
   <script>
-    const FN_URL = '/.netlify/functions/places'; // same origin
-
-    // TEMP: use a fixed location for now (Naperville).
-    // We'll pass real device location from the React Native app later.
-    const DEFAULT_COORDS = { lat: 41.7508, lng: -88.1535 };
+    const FN_URL = '/.netlify/functions/places';
+    let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback until app sends real coords
 
     const form = document.getElementById('searchForm');
     const q = document.getElementById('q');
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
+    const coordsEl = document.getElementById('coords');
+
+    function setCoords(lat, lng) {
+      CURRENT_COORDS = { lat, lng };
+      coordsEl.textContent = `coords: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      console.log('coords set ->', CURRENT_COORDS);
+    }
+    // show fallback at start
+    setCoords(CURRENT_COORDS.lat, CURRENT_COORDS.lng);
+
+    // Receive coords from the React Native app
+    function handleFWMessage(raw) {
+      try {
+        const msg = JSON.parse(raw || '{}');
+        if (msg.type === 'FW_COORDS' && msg.payload?.lat && msg.payload?.lng) {
+          setCoords(msg.payload.lat, msg.payload.lng);
+          // optional: auto search on first coords
+          if (!q.value) q.value = 'sushi';
+          form.dispatchEvent(new Event('submit'));
+        }
+      } catch (e) { console.warn('bad msg', e); }
+    }
+    window.addEventListener('message', (e) => handleFWMessage(e.data), false);
+    document.addEventListener('message', (e) => handleFWMessage(e.data), false);
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       resultsEl.innerHTML = '';
       statusEl.textContent = 'Searching…';
 
-      try {
-        const body = {
-          query: q.value.trim(),
-          lat: DEFAULT_COORDS.lat,
-          lng: DEFAULT_COORDS.lng,
-          radius: 6000
-        };
+      const body = {
+        query: q.value.trim(),
+        lat: CURRENT_COORDS.lat,      // <-- USE CURRENT COORDS
+        lng: CURRENT_COORDS.lng,
+        radius: 6000
+      };
+      console.log('POST body ->', body);
 
+      try {
         const res = await fetch(FN_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
-
         if (!res.ok) throw new Error('Request failed: ' + res.status);
         const data = await res.json();
         render(data.places || []);
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
+        console.error(err);
       }
     });
 
@@ -79,10 +103,6 @@
         </div>
       `).join('');
     }
-
-    // run one demo search on load
-    q.value = 'sushi';
-    form.dispatchEvent(new Event('submit'));
   </script>
 </body>
 </html>
