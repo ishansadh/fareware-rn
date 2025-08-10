@@ -87,9 +87,10 @@
         const data = await res.json();
         render(data.places || []);
       } catch (err) {
-        statusEl.textContent = 'Error: ' + err.message;
-        console.error(err);
-      }
+  statusEl.textContent = 'Error: ' + (err.message || err);
+  console.error('search error', err);
+}
+
     });
 
     function render(places) {
