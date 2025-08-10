@@ -1,1 +1,88 @@
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>FareWare Test</title></head><body style="font-family:sans-serif"><h1>FareWare Search (Local)</h1><p>If you can see this inside the app, WebView works!</p></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FareWare Search (Live)</title>
+  <style>
+    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; margin: 16px; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    form { display: flex; gap: 8px; margin-bottom: 12px; }
+    input, button { font-size: 16px; padding: 10px; }
+    #results { display: grid; gap: 10px; }
+    .card { padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
+    .name { font-weight: 600; }
+    .meta { color: #666; font-size: 14px; margin-top: 4px; }
+    .muted { color: #999; }
+  </style>
+</head>
+<body>
+  <h1>FareWare Search</h1>
+
+  <form id="searchForm">
+    <input id="q" type="text" placeholder="Try: sushi, tacos, brunch…" required />
+    <button type="submit">Search</button>
+  </form>
+
+  <div id="status" class="muted"></div>
+  <div id="results"></div>
+
+  <script>
+    const FN_URL = '/.netlify/functions/places'; // same origin
+
+    // TEMP: use a fixed location for now (Naperville).
+    // We'll pass real device location from the React Native app later.
+    const DEFAULT_COORDS = { lat: 41.7508, lng: -88.1535 };
+
+    const form = document.getElementById('searchForm');
+    const q = document.getElementById('q');
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resultsEl.innerHTML = '';
+      statusEl.textContent = 'Searching…';
+
+      try {
+        const body = {
+          query: q.value.trim(),
+          lat: DEFAULT_COORDS.lat,
+          lng: DEFAULT_COORDS.lng,
+          radius: 6000
+        };
+
+        const res = await fetch(FN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) throw new Error('Request failed: ' + res.status);
+        const data = await res.json();
+        render(data.places || []);
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    function render(places) {
+      statusEl.textContent = places.length ? `Found ${places.length} places` : 'No results';
+      resultsEl.innerHTML = places.map(p => `
+        <div class="card">
+          <div class="name">${p.name ?? 'Unknown'}</div>
+          <div class="meta">
+            ${p.rating ? `★ ${p.rating}` : 'No rating'}
+            ${p.address ? ' • ' + p.address : ''}
+          </div>
+          <div class="meta muted">${(p.types || []).slice(0,3).join(', ')}</div>
+        </div>
+      `).join('');
+    }
+
+    // run one demo search on load
+    q.value = 'sushi';
+    form.dispatchEvent(new Event('submit'));
+  </script>
+</body>
+</html>
