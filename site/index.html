@@ -85,6 +85,12 @@
         });
         if (!res.ok) throw new Error('Request failed: ' + res.status);
         const data = await res.json();
+        if (data.error) {
+  statusEl.textContent = `Places error: ${data.error} ${data.error_message ? '– ' + data.error_message : ''}`;
+  console.warn('Places error', data);
+  return;
+}
+
         render(data.places || []);
       } catch (err) {
   statusEl.textContent = 'Error: ' + (err.message || err);
