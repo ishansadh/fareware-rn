@@ -1,75 +1,80 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, RefreshControl, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const URL = 'https://genuine-crumble-33f1c9.netlify.app'; // <-- your Netlify URL
 
 export default function HomeScreen() {
+  const webRef = useRef<WebView>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    webRef.current?.reload();
+    setTimeout(() => setRefreshing(false), 600);
+  }, []);
+
+  const handleNavStateChange = (navState: any) => {
+    setCanGoBack(navState.canGoBack);
+  };
+
+  const handleShouldStart = (req: any) => {
+    // Keep same-origin in the app; open others in Safari
+    try {
+      const origin = new URL(URL).origin;
+      const reqOrigin = new URL(req.url).origin;
+      if (reqOrigin === origin) return true;
+    } catch {}
+    Linking.openURL(req.url);
+    return false;
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <SafeAreaView style={{ flex: 1 }}>
+      {/* Top bar with Back + Reload */}
+      <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 12 }}>
+        <TouchableOpacity
+          onPress={() => webRef.current?.goBack()}
+          disabled={!canGoBack}
+          style={{ opacity: canGoBack ? 1 : 0.3 }}
+        >
+          <Text style={{ fontSize: 16 }}>◀︎ Back</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => webRef.current?.reload()}>
+          <Text style={{ fontSize: 16 }}>↻ Reload</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flex: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <WebView
+          ref={webRef}
+          source={{ uri: URL }}
+          style={{ flex: 1 }}
+          originWhitelist={['*']}
+          javaScriptEnabled
+          domStorageEnabled
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onNavigationStateChange={handleNavStateChange}
+          onShouldStartLoadWithRequest={handleShouldStart}
+          startInLoadingState
+          renderLoading={() => <ActivityIndicator style={{ marginTop: 24 }} />}
+          onError={(e) => console.log('WebView error:', e.nativeEvent)}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </ScrollView>
+
+      {loading && (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 60, right: 16 }}>
+          <ActivityIndicator />
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
