@@ -1,16 +1,21 @@
+// netlify/functions/places.js
 export async function handler(event) {
+  // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders(), body: '' };
   }
 
   try {
     const { query, lat, lng, radius = 5000, pagetoken } = JSON.parse(event.body || '{}');
+
+    // If not using Google's next_page_token, require query + coords
     if (!pagetoken && (!query || typeof lat !== 'number' || typeof lng !== 'number')) {
       return json(400, { error: 'query, lat, lng required (unless using pagetoken)' });
     }
 
     const key = process.env.GOOGLE_MAPS_API_KEY;
     const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
+
     if (pagetoken) {
       url.searchParams.set('pagetoken', pagetoken);
     } else {
@@ -23,12 +28,13 @@ export async function handler(event) {
     const res = await fetch(url);
     const data = await res.json();
 
-    // Surface Google errors to the UI
+    // Surface Google status back to the UI (very helpful when debugging)
     const status = data.status || 'UNKNOWN';
     if (!['OK', 'ZERO_RESULTS'].includes(status)) {
       return json(200, { places: [], error: status, error_message: data.error_message || null });
     }
 
+    // Normalize the results we care about
     const places = (data.results || []).map(p => ({
       place_id: p.place_id,
       name: p.name,
@@ -36,12 +42,16 @@ export async function handler(event) {
       user_ratings_total: p.user_ratings_total,
       price_level: p.price_level,
       address: p.formatted_address,
-      location: p.geometry?.location,
-      types: p.types,
-      photo_ref: p.photos?.[0]?.photo_reference || null,
+      location: p.geometry?.location || null,
+      types: p.types || [],
+      // include a photo reference so the UI can request an actual image via our photo proxy
+      photo_ref: p.photos?.[0]?.photo_reference || null
     }));
 
-    return json(200, { places, next_page_token: data.next_page_token || null });
+    return json(200, {
+      places,
+      next_page_token: data.next_page_token || null
+    });
   } catch (err) {
     return json(500, { error: err.message || String(err) });
   }
@@ -50,6 +60,7 @@ export async function handler(event) {
 function json(code, obj) {
   return { statusCode: code, headers: corsHeaders(), body: JSON.stringify(obj) };
 }
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',

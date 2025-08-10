@@ -3,115 +3,208 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FareWare Search (Live)</title>
+  <title>FareWare</title>
   <style>
-    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; margin: 16px; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    form { display: flex; gap: 8px; margin-bottom: 8px; }
-    input, button { font-size: 16px; padding: 10px; }
-    #coords { font-size: 12px; color: #666; margin-bottom: 12px; }
-    #results { display: grid; gap: 10px; }
-    .card { padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
-    .name { font-weight: 600; }
-    .meta { color: #666; font-size: 14px; margin-top: 4px; }
-    .muted { color: #999; }
+    :root { --pill:#f4f5f7; --accent:#ff7f31; }
+    body { font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif; margin:16px; color:#111; }
+    h1 { font-size:18px; margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+    .pill { background:var(--pill); padding:8px 12px; border-radius:999px; font-size:14px; }
+    .pill.active { background:#ffe9de; color:#a84609; border:1px solid #ffc299; }
+    .search { display:flex; gap:8px; }
+    input[type=search] { flex:1; padding:12px 14px; border:1px solid #ddd; border-radius:12px; font-size:16px; }
+    button { padding:10px 12px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:14px; }
+    #coords { font-size:12px; color:#666; }
+    #status { font-size:12px; color:#666; margin:6px 0 12px; }
+
+    #results { display:grid; gap:12px; }
+    .card { display:block; background:#fff; border:1px solid #e6e6e6; border-radius:14px; overflow:hidden; text-align:left; }
+    .img { width:100%; height:180px; background:#eee; object-fit:cover; display:block; }
+    .pad { padding:12px; }
+    .title { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .name { font-weight:600; font-size:16px; }
+    .price { color:#111; font-weight:600; }
+    .meta { color:#666; font-size:13px; margin-top:4px; }
+    .rowBetween { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+    .cta { background:var(--accent); color:#fff; border:none; padding:8px 12px; border-radius:10px; }
+    .detail { margin-top:16px; }
+
+    a { color:#0b66d6; text-decoration:none; }
   </style>
 </head>
 <body>
-  <h1>FareWare Search</h1>
+  <h1>
+    <span>FareWare</span>
+    <small id="coords">Using your location…</small>
+  </h1>
 
-  <form id="searchForm">
-    <input id="q" type="text" placeholder="Try: sushi, tacos, brunch…" required />
-    <button type="submit">Search</button>
-  </form>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search dishes…" />
+    <button id="go">Search</button>
+  </div>
 
-  <div id="coords" class="muted">coords: (waiting…)</div>
-  <div id="status" class="muted"></div>
+  <div class="row">
+    <span class="pill">Open Now</span>
+    <span class="pill active">Affordable ≤ $$</span>
+    <span class="pill">≤ 8 km</span>
+  </div>
+
+  <div class="row">
+    <span class="pill">Deals</span>
+    <span class="pill">More Filters ▾</span>
+  </div>
+
+  <div class="row">
+    <span class="pill active">Dishes</span>
+    <span class="pill">Restaurants</span>
+    <span class="pill" id="taste">Use Your Taste • ON</span>
+  </div>
+
+  <div id="status"></div>
   <div id="results"></div>
+  <div id="detail" class="detail"></div>
 
-  <!-- All JS is inside this single script tag -->
   <script>
-    const FN_URL = '/.netlify/functions/places';
-    let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback until app sends real coords
+    const FN_PLACES  = '/.netlify/functions/places';
+    const FN_DETAILS = '/.netlify/functions/placeDetails';
+    const FN_PHOTO   = '/.netlify/functions/photo';
 
-    const form = document.getElementById('searchForm');
+    let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback until RN sends real coords
+
     const q = document.getElementById('q');
+    const go = document.getElementById('go');
+    const coordsEl = document.getElementById('coords');
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
-    const coordsEl = document.getElementById('coords');
+    const detailEl  = document.getElementById('detail');
 
-    function setCoords(lat, lng) {
+    function setCoords(lat, lng){
       CURRENT_COORDS = { lat, lng };
-      coordsEl.textContent = `coords: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      console.log('coords set ->', CURRENT_COORDS);
+      coordsEl.textContent = `Using your location · ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
     setCoords(CURRENT_COORDS.lat, CURRENT_COORDS.lng);
 
-    // Receive coords from the React Native app
-    function handleFWMessage(raw) {
+    function handleFWMessage(raw){
       try {
         const msg = JSON.parse(raw || '{}');
         if (msg.type === 'FW_COORDS' && msg.payload?.lat && msg.payload?.lng) {
           setCoords(msg.payload.lat, msg.payload.lng);
           if (!q.value) q.value = 'sushi';
-          form.dispatchEvent(new Event('submit'));
+          onSearch();
         }
-      } catch (e) { console.warn('bad msg', e); }
+      } catch {}
     }
-    window.addEventListener('message', (e) => handleFWMessage(e.data), false);
-    document.addEventListener('message', (e) => handleFWMessage(e.data), false);
+    window.addEventListener('message', e => handleFWMessage(e.data), false);
+    document.addEventListener('message', e => handleFWMessage(e.data), false);
 
-    // Tell the native app the page is ready
-    try { window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'FW_READY' })); } catch {}
+    // Tell RN that the page is ready; RN will respond with FW_COORDS
+    try { window.ReactNativeWebView?.postMessage(JSON.stringify({ type:'FW_READY' })); } catch {}
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    go.addEventListener('click', onSearch);
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') onSearch(); });
+
+    async function onSearch(){
       resultsEl.innerHTML = '';
+      detailEl.innerHTML  = '';
       statusEl.textContent = 'Searching…';
 
       const body = {
-        query: q.value.trim(),
+        query: (q.value || 'sushi').trim(),
         lat: CURRENT_COORDS.lat,
         lng: CURRENT_COORDS.lng,
         radius: 6000
       };
-      console.log('POST body ->', body);
 
       try {
-        const res = await fetch(FN_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(FN_PLACES, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error('Request failed: ' + res.status);
         const data = await res.json();
         if (data.error) {
-  statusEl.textContent = `Places error: ${data.error} ${data.error_message ? '– ' + data.error_message : ''}`;
-  console.warn('Places error', data);
-  return;
-}
-
+          statusEl.textContent = `Places error: ${data.error}${data.error_message ? ' – ' + data.error_message : ''}`;
+          return;
+        }
         render(data.places || []);
-      } catch (err) {
-  statusEl.textContent = 'Error: ' + (err.message || err);
-  console.error('search error', err);
-}
-
-    });
-
-    function render(places) {
-      statusEl.textContent = places.length ? `Found ${places.length} places` : 'No results';
-      resultsEl.innerHTML = places.map(p => `
-        <div class="card">
-          <div class="name">${p.name ?? 'Unknown'}</div>
-          <div class="meta">
-            ${p.rating ? `★ ${p.rating}` : 'No rating'}
-            ${p.address ? ' • ' + p.address : ''}
-          </div>
-          <div class="meta muted">${(p.types || []).slice(0,3).join(', ')}</div>
-        </div>
-      `).join('');
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+      }
     }
+
+    function dollars(n){ return n ? '$'.repeat(n) : ''; }
+    function km(from, to){
+      if (!from || !to) return '';
+      const R=6371, dLat=(to.lat-from.lat)*Math.PI/180, dLng=(to.lng-from.lng)*Math.PI/180;
+      const a=Math.sin(dLat/2)**2 + Math.cos(from.lat*Math.PI/180)*Math.cos(to.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+      return (R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1)+' km';
+    }
+
+    function render(places){
+      statusEl.textContent = places.length ? `Found ${places.length} places` : 'No results';
+
+      resultsEl.innerHTML = places.map(p => {
+        const distance = km(CURRENT_COORDS, p.location);
+        const img = p.photo_ref ? `${FN_PHOTO}?ref=${encodeURIComponent(p.photo_ref)}&maxwidth=900` : '';
+        return `
+          <button class="card" data-id="${p.place_id}">
+            ${img ? `<img class="img" src="${img}" alt="" />` : `<div class="img"></div>`}
+            <div class="pad">
+              <div class="title">
+                <div class="name">${p.name ?? 'Unknown'}</div>
+                <div class="price">${dollars(p.price_level)}</div>
+              </div>
+              <div class="meta">★ ${p.rating ?? '—'} · ${p.user_ratings_total ?? 0} · ${distance}</div>
+              <div class="rowBetween">
+                <div class="meta">${(p.types||[]).slice(0,2).join(', ')}</div>
+                <button class="cta">Customize</button>
+              </div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      [...resultsEl.querySelectorAll('.card')].forEach(el => {
+        el.addEventListener('click', () => showDetails(el.dataset.id));
+      });
+    }
+
+    async function showDetails(place_id){
+      detailEl.innerHTML = 'Loading details…';
+      try {
+        const res = await fetch(FN_DETAILS, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ place_id })
+        });
+        const d = await res.json();
+        if (d.error) {
+          detailEl.textContent = `Details error: ${d.error} ${d.error_message || ''}`;
+          return;
+        }
+        const img = d.photo_ref ? `${FN_PHOTO}?ref=${encodeURIComponent(d.photo_ref)}&maxwidth=1200` : '';
+        detailEl.innerHTML = `
+          <div class="card" style="border-color:#ccc">
+            ${img ? `<img class="img" src="${img}" alt="" style="height:220px" />` : ''}
+            <div class="pad">
+              <div class="title">
+                <div class="name" style="font-size:18px">${d.name}</div>
+                <div class="price">${dollars(d.price_level)}</div>
+              </div>
+              <div class="meta">★ ${d.rating ?? '—'} · ${d.user_ratings_total ?? 0}</div>
+              <div class="meta">${d.address ?? ''}</div>
+              <div class="meta">${d.phone ? '☎︎ ' + d.phone : ''} ${d.website ? ` • <a href="${d.website}" target="_blank" rel="noopener">Website</a>` : ''}</div>
+              ${d.opening_hours?.weekday_text ? `<div class="meta" style="margin-top:6px">${d.opening_hours.weekday_text.join('<br/>')}</div>` : ''}
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        detailEl.textContent = 'Failed to load details: ' + e.message;
+      }
+    }
+
+    // Demo search on load (will re-run with your coords once RN posts them)
+    q.value = 'sushi';
+    onSearch();
   </script>
 </body>
 </html>
