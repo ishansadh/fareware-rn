@@ -54,7 +54,7 @@
 <body>
   <!-- Header -->
   <header>
-    <img src="logo.png" alt="FareWare" class="logo" />
+    <img src="icons/logo.png" alt="FareWare" class="logo" />
     <button id="savedBtn" class="chip icon-only" title="Saved">
       <img class="ico" src="icons/bookmark.png" alt="saved" />
       <span id="savedCount">0</span>
@@ -107,13 +107,11 @@
     const FN_DETAILS = '/.netlify/functions/placeDetails';
     const FN_PHOTO   = '/.netlify/functions/photo';
 
-    // state
     let CURRENT_COORDS = { lat:41.7508, lng:-88.1535 };
     let filters = { openNow:false, maxPrice:2, radiusMi:5 };
     let saved = new Set(JSON.parse(localStorage.getItem('fw_saved')||'[]'));
     let recent = JSON.parse(localStorage.getItem('fw_recent')||'[]');
 
-    // els
     const q = document.getElementById('q');
     const go = document.getElementById('go');
     const statusEl = document.getElementById('status');
@@ -128,7 +126,6 @@
     const savedCount= document.getElementById('savedCount');
     const recentRow = document.getElementById('recentRow');
 
-    // helpers
     const dollars = n => n ? '$'.repeat(n) : '';
     function miles(from,to){
       if(!from||!to) return '';
@@ -138,7 +135,6 @@
     }
     function tagLink(t){ return `<a href="#" data-term="${t}">#${t.replace(/_/g,'')}</a>`; }
 
-    // RN messaging (coords)
     function setCoords(lat,lng){ CURRENT_COORDS={lat,lng}; }
     function handleFWMessage(raw){
       try{
@@ -154,7 +150,6 @@
     document.addEventListener('message',e=>handleFWMessage(e.data),false);
     try{ window.ReactNativeWebView?.postMessage(JSON.stringify({type:'FW_READY'})); }catch{}
 
-    // recent searches
     function renderRecent(){
       recentRow.innerHTML = recent.slice(0,6).map(t=>`<button class="bubble" data-term="${t}">${t}</button>`).join('');
       [...recentRow.querySelectorAll('.bubble')].forEach(b=>{
@@ -169,7 +164,6 @@
     }
     renderRecent();
 
-    // saved
     function updateSavedCount(){ savedCount.textContent=String(saved.size); }
     updateSavedCount();
     savedBtn.addEventListener('click', ()=>{
@@ -181,7 +175,6 @@
       resultsEl.appendChild(ul);
     });
 
-    // chips
     chipOpen.addEventListener('click', ()=>{
       filters.openNow=!filters.openNow;
       chipOpen.classList.toggle('active', filters.openNow);
@@ -203,7 +196,6 @@
     chipFilters.addEventListener('click', ()=>{ alert('More filters coming soon ✨'); });
     tasteBtn.addEventListener('click', ()=>{ alert('Launching “Your Taste” questionnaire soon!'); });
 
-    // search actions
     go.addEventListener('click', onSearch);
     q.addEventListener('keydown', e=>{ if(e.key==='Enter') onSearch(); });
 
@@ -261,7 +253,6 @@
         `;
       }).join('');
 
-      // open details
       [...resultsEl.querySelectorAll('.card')].forEach(el=>{
         el.addEventListener('click',(e)=>{
           if(e.target.closest('.tags')||e.target.closest('.heart')) return;
@@ -269,7 +260,6 @@
         });
       });
 
-      // save toggles
       [...resultsEl.querySelectorAll('.heart')].forEach(btn=>{
         btn.addEventListener('click',(e)=>{
           e.stopPropagation();
@@ -282,7 +272,6 @@
         });
       });
 
-      // hashtags
       [...resultsEl.querySelectorAll('.tags a')].forEach(a=>{
         a.addEventListener('click',(e)=>{
           e.preventDefault(); e.stopPropagation();
@@ -320,7 +309,6 @@
       }catch(e){ detailEl.textContent='Failed to load details: '+e.message; }
     }
 
-    // initial
     q.value='Best sushi';
   </script>
 </body>
