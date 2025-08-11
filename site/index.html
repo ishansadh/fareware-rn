@@ -54,9 +54,9 @@
 <body>
   <!-- Header -->
   <header>
-    <img src="logo.png" alt="FareWare" class="logo" />
+    <img src="/logo.png" alt="FareWare" class="logo" onerror="this.style.display='none'"/>
     <button id="savedBtn" class="chip icon-only" title="Saved">
-      <img class="ico" src="icons/bookmark.png" alt="saved" />
+      <img class="ico" src="/icons/bookmark.png" alt="saved" onerror="this.style.display='none'"/>
       <span id="savedCount">0</span>
     </button>
   </header>
@@ -64,19 +64,19 @@
   <!-- Icon chips row -->
   <div class="iconbar">
     <button id="chipOpen" class="chip" title="Open now">
-      <img class="ico" src="icons/clock.png" alt="open" /><span class="label">Open</span>
+      <img class="ico" src="/icons/clock.png" alt="open" onerror="this.style.display='none'"/><span class="label">Open</span>
     </button>
 
     <button id="chipPrice" class="chip active" title="Toggle price">
-      <img class="ico" src="icons/dollar.png" alt="price" /><span class="label">≤ $$</span>
+      <img class="ico" src="/icons/dollar.png" alt="price" onerror="this.style.display='none'"/><span class="label">≤ $$</span>
     </button>
 
     <button id="chipRadius" class="chip" title="Search radius">
-      <img class="ico" src="icons/car.png" alt="distance" /><span class="label">≤ 5 mi</span>
+      <img class="ico" src="/icons/car.png" alt="distance" onerror="this.style.display='none'"/><span class="label">≤ 5 mi</span>
     </button>
 
     <button id="chipFilters" class="chip icon-only" title="More filters">
-      <img class="ico" src="icons/sliders.png" alt="filters" />
+      <img class="ico" src="/icons/sliders.png" alt="filters" onerror="this.style.display='none'"/>
     </button>
   </div>
 
@@ -94,7 +94,7 @@
   <div class="searchRow">
     <input id="q" class="searchInput" type="search" placeholder="What are you craving?" />
     <button id="go" class="sendbtn" title="Search">
-      <img class="ico" src="icons/send.png" alt="search" />
+      <img class="ico" src="/icons/send.png" alt="search" onerror="this.style.display='none'"/>
     </button>
   </div>
 
@@ -253,7 +253,7 @@
               <div class="rowBetween">
                 <div class="meta tags">${tags}</div>
                 <button class="heart ${isSaved?'saved':''}" type="button" aria-label="Save">
-                  <img class="ico" src="icons/heart.png" alt="save" />
+                  <img class="ico" src="/icons/heart.png" alt="save" onerror="this.style.display='none'"/>
                 </button>
               </div>
             </div>
