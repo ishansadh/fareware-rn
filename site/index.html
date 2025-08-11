@@ -6,46 +6,105 @@
   <title>FareWare</title>
   <style>
     :root{
-      --ink:#111; --muted:#666; --stroke:#e6e6e6;
-      --pill:#f4f5f7; --accent:#ff7f31; --accent-ink:#a84609; --accent-weak:#ffe9de;
+      --bg:#F7FAFC;
+      --ink:#111;
+      --muted:#667085;
+      --stroke:#E6EAF0;
+      --pill:#FFFFFF;
+      --accent:#f27521;
+      --accent-ink:#9c480e;
+      --accent-weak:#FFE6D3;
       --round:14px;
+      --shadow-1:0 1px 2px rgba(16,24,40,.06);
+      --shadow-2:0 8px 20px rgba(16,24,40,.06);
+      --shadow-inset:inset 0 0 0 1px var(--stroke);
     }
+
     *{box-sizing:border-box}
-    body{font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;margin:16px;color:var(--ink);background:#fff}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-    .logo{height:28px;display:block}
+    body{
+      font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      margin:16px;
+      color:var(--ink);
+      background:var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
 
-    .iconbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;background:var(--pill);
-      border:1px solid transparent;cursor:pointer;user-select:none}
-    .chip.active{background:var(--accent-weak);border-color:#ffc299;color:var(--accent-ink)}
-    .chip.icon-only{padding:10px}
-    .ico{width:20px;height:20px;display:block;object-fit:contain}
-    .chip .label{font-size:14px;line-height:1}
+    /* Header */
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .logo{height:30px; display:block}
 
-    .ctaTaste{display:flex;gap:8px;align-items:center;justify-content:center;background:var(--accent);color:#fff;border:none;
-      width:100%;padding:12px;border-radius:12px;font-weight:600;cursor:pointer}
-    .recentRow{display:flex;gap:8px;overflow:auto;padding:4px 0 6px}
-    .bubble{border:1px solid var(--stroke);padding:10px 12px;border-radius:999px;white-space:nowrap;background:#fff;cursor:pointer}
+    /* Chips / Icon buttons row */
+    .iconbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .chip{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:12px 14px; border-radius:999px;
+      background:var(--pill); border:1px solid #EEF2F6;
+      box-shadow:var(--shadow-1);
+      cursor:pointer; user-select:none;
+      transition:transform .05s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .chip:active{transform:translateY(1px)}
+    .chip.active{background:var(--accent-weak); border-color:#FFD0B0; color:var(--accent-ink)}
+    .chip.icon-only{padding:12px}
+    .ico{width:20px; height:20px; display:block; object-fit:contain}
+    .chip .label{
+      font-size:15px; line-height:1; font-weight:600; letter-spacing:.2px;
+    }
 
-    .searchRow{display:flex;gap:8px;margin-top:8px}
-    .searchInput{flex:1;border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;font-size:16px}
-    .sendbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--stroke);background:#fff;
-      border-radius:12px;padding:10px 12px;cursor:pointer}
+    /* CTA */
+    .ctaTaste{
+      display:flex; gap:8px; align-items:center; justify-content:center;
+      width:100%; padding:14px 16px; border-radius:14px;
+      background:var(--accent); color:#fff; font-weight:700; border:none;
+      box-shadow:0 6px 16px rgba(242,117,33,.35);
+      margin-top:8px;
+    }
 
-    #status{font-size:12px;color:var(--muted);margin:10px 0}
-    #results{display:grid;gap:12px}
-    .card{background:#fff;border:1px solid var(--stroke);border-radius:var(--round);overflow:hidden}
-    .img{width:100%;height:180px;background:#eee;object-fit:cover;display:block}
-    .pad{padding:12px}
-    .title{display:flex;justify-content:space-between;align-items:center;gap:8px}
-    .name{font-weight:600;font-size:16px}
-    .price{font-weight:600}
-    .meta{color:var(--muted);font-size:13px;margin-top:4px}
-    .rowBetween{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:12px}
-    .heart{border:1px solid var(--stroke);background:#fff;padding:8px;border-radius:10px;display:inline-flex;align-items:center}
-    .heart.saved{background:var(--accent-weak);border-color:#ffc299}
-    .tags a{color:#0b66d6;text-decoration:none;margin-right:6px}
+    /* Recent searches */
+    .recentRow{display:flex; gap:10px; overflow:auto; padding:6px 0 8px}
+    .bubble{
+      border-radius:999px; background:#fff; padding:10px 12px;
+      box-shadow:var(--shadow-1); border:1px solid #EEF2F6; white-space:nowrap; cursor:pointer;
+      font-weight:600; color:#344054;
+    }
+
+    /* Search row */
+    .searchRow{display:flex; gap:10px; margin-top:8px}
+    .searchInput{
+      flex:1; border-radius:14px; padding:14px 16px; font-size:16px;
+      border:1px solid #E7EBF0; background:#fff; box-shadow:var(--shadow-1);
+    }
+    .sendbtn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:12px 14px; border-radius:14px; background:#fff;
+      border:1px solid #E7EBF0; box-shadow:var(--shadow-1); cursor:pointer;
+    }
+
+    /* Status + results */
+    #status{font-size:12px; color:var(--muted); margin:12px 0}
+    #results{display:grid; gap:14px}
+
+    /* Result cards */
+    .card{
+      background:#fff; border:1px solid #EEF2F6; border-radius:16px; overflow:hidden;
+      box-shadow:var(--shadow-2);
+    }
+    .img{width:100%; height:180px; background:#EFF3F8; object-fit:cover; display:block}
+    .pad{padding:14px}
+    .title{display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .name{font-weight:700; font-size:17px}
+    .price{font-weight:700}
+    .meta{color:var(--muted); font-size:13px; margin-top:4px}
+    .rowBetween{display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:12px}
+    .heart{
+      border:1px solid #E7EBF0; background:#fff; padding:9px; border-radius:12px;
+      display:inline-flex; align-items:center; box-shadow:var(--shadow-1);
+    }
+    .heart.saved{background:var(--accent-weak); border-color:#FFD0B0}
+    .tags a{color:#0B66D6; text-decoration:none; margin-right:6px; font-weight:600}
     .detail{margin-top:16px}
 
     .spacer8{height:8px} .spacer12{height:12px}
@@ -80,12 +139,7 @@
     </button>
   </div>
 
-  <div class="spacer8"></div>
-
-  <!-- Big CTA -->
   <button id="tasteBtn" class="ctaTaste">Personalize with Your Taste</button>
-
-  <div class="spacer12"></div>
 
   <!-- Recent searches -->
   <div id="recentRow" class="recentRow"></div>
@@ -107,11 +161,13 @@
     const FN_DETAILS = '/.netlify/functions/placeDetails';
     const FN_PHOTO   = '/.netlify/functions/photo';
 
+    // state
     let CURRENT_COORDS = { lat:41.7508, lng:-88.1535 };
     let filters = { openNow:false, maxPrice:2, radiusMi:5 };
     let saved = new Set(JSON.parse(localStorage.getItem('fw_saved')||'[]'));
     let recent = JSON.parse(localStorage.getItem('fw_recent')||'[]');
 
+    // els
     const q = document.getElementById('q');
     const go = document.getElementById('go');
     const statusEl = document.getElementById('status');
@@ -126,6 +182,7 @@
     const savedCount= document.getElementById('savedCount');
     const recentRow = document.getElementById('recentRow');
 
+    // helpers
     const dollars = n => n ? '$'.repeat(n) : '';
     function miles(from,to){
       if(!from||!to) return '';
@@ -135,6 +192,7 @@
     }
     function tagLink(t){ return `<a href="#" data-term="${t}">#${t.replace(/_/g,'')}</a>`; }
 
+    // RN messaging (coords)
     function setCoords(lat,lng){ CURRENT_COORDS={lat,lng}; }
     function handleFWMessage(raw){
       try{
@@ -150,6 +208,7 @@
     document.addEventListener('message',e=>handleFWMessage(e.data),false);
     try{ window.ReactNativeWebView?.postMessage(JSON.stringify({type:'FW_READY'})); }catch{}
 
+    // recent searches
     function renderRecent(){
       recentRow.innerHTML = recent.slice(0,6).map(t=>`<button class="bubble" data-term="${t}">${t}</button>`).join('');
       [...recentRow.querySelectorAll('.bubble')].forEach(b=>{
@@ -164,6 +223,7 @@
     }
     renderRecent();
 
+    // saved
     function updateSavedCount(){ savedCount.textContent=String(saved.size); }
     updateSavedCount();
     savedBtn.addEventListener('click', ()=>{
@@ -175,6 +235,7 @@
       resultsEl.appendChild(ul);
     });
 
+    // chips
     chipOpen.addEventListener('click', ()=>{
       filters.openNow=!filters.openNow;
       chipOpen.classList.toggle('active', filters.openNow);
@@ -196,6 +257,7 @@
     chipFilters.addEventListener('click', ()=>{ alert('More filters coming soon ✨'); });
     tasteBtn.addEventListener('click', ()=>{ alert('Launching “Your Taste” questionnaire soon!'); });
 
+    // search actions
     go.addEventListener('click', onSearch);
     q.addEventListener('keydown', e=>{ if(e.key==='Enter') onSearch(); });
 
@@ -253,6 +315,7 @@
         `;
       }).join('');
 
+      // open details
       [...resultsEl.querySelectorAll('.card')].forEach(el=>{
         el.addEventListener('click',(e)=>{
           if(e.target.closest('.tags')||e.target.closest('.heart')) return;
@@ -260,6 +323,7 @@
         });
       });
 
+      // save toggles
       [...resultsEl.querySelectorAll('.heart')].forEach(btn=>{
         btn.addEventListener('click',(e)=>{
           e.stopPropagation();
@@ -272,6 +336,7 @@
         });
       });
 
+      // hashtags
       [...resultsEl.querySelectorAll('.tags a')].forEach(a=>{
         a.addEventListener('click',(e)=>{
           e.preventDefault(); e.stopPropagation();
@@ -293,7 +358,7 @@
         const img = d.photo_ref ? `${FN_PHOTO}?ref=${encodeURIComponent(d.photo_ref)}&maxwidth=1200` : '';
         const hours = d.opening_hours?.weekday_text ? d.opening_hours.weekday_text.join('<br/>') : '';
         detailEl.innerHTML = `
-          <div class="card" style="border-color:#ccc">
+          <div class="card" style="border-color:#DDE3EA">
             ${img?`<img class="img" src="${img}" alt="" style="height:220px">`:''}
             <div class="pad">
               <div class="title">
@@ -309,6 +374,7 @@
       }catch(e){ detailEl.textContent='Failed to load details: '+e.message; }
     }
 
+    // initial seed
     q.value='Best sushi';
   </script>
 </body>
