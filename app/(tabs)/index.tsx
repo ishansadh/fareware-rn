@@ -1,39 +1,50 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, RefreshControl, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { SafeAreaView, ActivityIndicator, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as Location from 'expo-location';
 
-const URL = 'https://genuine-crumble-33f1c9.netlify.app'; // <-- your Netlify URL
+const BASE_URL = 'https://genuine-crumble-33f1c9.netlify.app';
 
 export default function HomeScreen() {
   const webRef = useRef<WebView>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [coords, setCoords] = useState<{lat:number; lng:number} | null>(null);
+  const [pageReady, setPageReady] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    webRef.current?.reload();
-    setTimeout(() => setRefreshing(false), 600);
+  // Ask permission and get coords once
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Location', 'Permission denied — using fallback in page.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({});
+      const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setCoords(c);
+    })();
   }, []);
 
-  const handleNavStateChange = (navState: any) => {
-    setCanGoBack(navState.canGoBack);
-  };
+  // When both page is ready and we have coords, send them
+  useEffect(() => {
+    if (pageReady && coords) {
+      const msg = JSON.stringify({ type: 'FW_COORDS', payload: coords });
+      webRef.current?.postMessage(msg);
+    }
+  }, [pageReady, coords]);
 
-  const handleShouldStart = (req: any) => {
-    // Keep same-origin in the app; open others in Safari
+  const handleMessage = (e: any) => {
     try {
-      const origin = new URL(URL).origin;
-      const reqOrigin = new URL(req.url).origin;
-      if (reqOrigin === origin) return true;
+      const msg = JSON.parse(e.nativeEvent.data || '{}');
+      if (msg.type === 'FW_READY') {
+        setPageReady(true);
+      }
     } catch {}
-    Linking.openURL(req.url);
-    return false;
   };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {/* Top bar with Back + Reload */}
       <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 12 }}>
         <TouchableOpacity
           onPress={() => webRef.current?.goBack()}
@@ -42,33 +53,23 @@ export default function HomeScreen() {
         >
           <Text style={{ fontSize: 16 }}>◀︎ Back</Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => webRef.current?.reload()}>
           <Text style={{ fontSize: 16 }}>↻ Reload</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      <WebView
+        ref={webRef}
+        // cache-busting query string ensures the phone gets the latest page
+        source={{ uri: `${BASE_URL}?v=${Date.now()}` }}
         style={{ flex: 1 }}
-        contentContainerStyle={{ flex: 1 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <WebView
-          ref={webRef}
-          source={{ uri: URL }}
-          style={{ flex: 1 }}
-          originWhitelist={['*']}
-          javaScriptEnabled
-          domStorageEnabled
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-          onNavigationStateChange={handleNavStateChange}
-          onShouldStartLoadWithRequest={handleShouldStart}
-          startInLoadingState
-          renderLoading={() => <ActivityIndicator style={{ marginTop: 24 }} />}
-          onError={(e) => console.log('WebView error:', e.nativeEvent)}
-        />
-      </ScrollView>
+        originWhitelist={['*']}
+        javaScriptEnabled
+        domStorageEnabled
+        onMessage={handleMessage}
+        onNavigationStateChange={(nav) => setCanGoBack(nav.canGoBack)}
+        onLoadEnd={() => setLoading(false)}
+      />
 
       {loading && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 60, right: 16 }}>
