@@ -9,11 +9,11 @@
     body { font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif; margin:16px; color:#111; }
     h1 { font-size:18px; margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; }
     .row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
-    .pill { background:var(--pill); padding:8px 12px; border-radius:999px; font-size:14px; }
+    .pill { background:var(--pill); padding:8px 12px; border-radius:999px; font-size:14px; cursor:pointer; }
     .pill.active { background:#ffe9de; color:#a84609; border:1px solid #ffc299; }
     .search { display:flex; gap:8px; }
     input[type=search] { flex:1; padding:12px 14px; border:1px solid #ddd; border-radius:12px; font-size:16px; }
-    button { padding:10px 12px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:14px; }
+    button { padding:10px 12px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:14px; cursor:pointer; }
     #coords { font-size:12px; color:#666; }
     #status { font-size:12px; color:#666; margin:6px 0 12px; }
 
@@ -25,11 +25,10 @@
     .name { font-weight:600; font-size:16px; }
     .price { color:#111; font-weight:600; }
     .meta { color:#666; font-size:13px; margin-top:4px; }
-    .rowBetween { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+    .rowBetween { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:12px; }
     .cta { background:var(--accent); color:#fff; border:none; padding:8px 12px; border-radius:10px; }
     .detail { margin-top:16px; }
-
-    a { color:#0b66d6; text-decoration:none; }
+    .tags a { color:#0b66d6; text-decoration:none; margin-right:6px; }
   </style>
 </head>
 <body>
@@ -40,13 +39,13 @@
 
   <div class="search">
     <input id="q" type="search" placeholder="Search dishes…" />
-    <button id="go">Search</button>
+    <button id="go" type="button">Search</button>
   </div>
 
   <div class="row">
-    <span class="pill">Open Now</span>
-    <span class="pill active">Affordable ≤ $$</span>
-    <span class="pill">≤ 8 km</span>
+    <span id="chipOpenNow" class="pill">Open Now</span>
+    <span id="chipAffordable" class="pill active">Affordable ≤ $$</span>
+    <span id="chipRadius" class="pill">≤ 5 mi</span>
   </div>
 
   <div class="row">
@@ -69,7 +68,8 @@
     const FN_DETAILS = '/.netlify/functions/placeDetails';
     const FN_PHOTO   = '/.netlify/functions/photo';
 
-    let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback until RN sends real coords
+    let CURRENT_COORDS = { lat: 41.7508, lng: -88.1535 }; // fallback
+    let filters = { openNow: false, maxPrice: 2, radiusMi: 5 };
 
     const q = document.getElementById('q');
     const go = document.getElementById('go');
@@ -78,12 +78,41 @@
     const resultsEl = document.getElementById('results');
     const detailEl  = document.getElementById('detail');
 
+    // Chips by ID (robust)
+    const chipOpenNow    = document.getElementById('chipOpenNow');
+    const chipAffordable = document.getElementById('chipAffordable');
+    const chipRadius     = document.getElementById('chipRadius');
+
+    // Chip behaviors
+    chipOpenNow.addEventListener('click', () => {
+      filters.openNow = !filters.openNow;
+      chipOpenNow.classList.toggle('active', filters.openNow);
+      onSearch();
+    });
+
+    chipAffordable.addEventListener('click', () => {
+      filters.maxPrice = filters.maxPrice === 2 ? 3 : 2;
+      chipAffordable.classList.toggle('active', filters.maxPrice <= 2);
+      chipAffordable.textContent = filters.maxPrice <= 2 ? 'Affordable ≤ $$' : 'Up to $$$';
+      onSearch();
+    });
+
+    chipRadius.textContent = `≤ ${filters.radiusMi} mi`;
+    chipRadius.addEventListener('click', () => {
+      const order = [3,5,8];
+      const idx = order.indexOf(filters.radiusMi);
+      filters.radiusMi = order[(idx+1)%order.length];
+      chipRadius.textContent = `≤ ${filters.radiusMi} mi`;
+      onSearch();
+    });
+
     function setCoords(lat, lng){
       CURRENT_COORDS = { lat, lng };
       coordsEl.textContent = `Using your location · ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
     setCoords(CURRENT_COORDS.lat, CURRENT_COORDS.lng);
 
+    // RN → Web messages
     function handleFWMessage(raw){
       try {
         const msg = JSON.parse(raw || '{}');
@@ -97,7 +126,7 @@
     window.addEventListener('message', e => handleFWMessage(e.data), false);
     document.addEventListener('message', e => handleFWMessage(e.data), false);
 
-    // Tell RN that the page is ready; RN will respond with FW_COORDS
+    // Tell RN the page is ready
     try { window.ReactNativeWebView?.postMessage(JSON.stringify({ type:'FW_READY' })); } catch {}
 
     go.addEventListener('click', onSearch);
@@ -108,11 +137,15 @@
       detailEl.innerHTML  = '';
       statusEl.textContent = 'Searching…';
 
+      const meters = Math.round(filters.radiusMi * 1609.34); // miles → meters
+
       const body = {
         query: (q.value || 'sushi').trim(),
         lat: CURRENT_COORDS.lat,
         lng: CURRENT_COORDS.lng,
-        radius: 6000
+        radius: meters,
+        openNow: filters.openNow ? 1 : 0,
+        maxprice: filters.maxPrice
       };
 
       try {
@@ -132,22 +165,27 @@
       }
     }
 
+    // helpers
     function dollars(n){ return n ? '$'.repeat(n) : ''; }
-    function km(from, to){
+    function miles(from, to){
       if (!from || !to) return '';
-      const R=6371, dLat=(to.lat-from.lat)*Math.PI/180, dLng=(to.lng-from.lng)*Math.PI/180;
+      const Rmi=3958.7613, dLat=(to.lat-from.lat)*Math.PI/180, dLng=(to.lng-from.lng)*Math.PI/180;
       const a=Math.sin(dLat/2)**2 + Math.cos(from.lat*Math.PI/180)*Math.cos(to.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-      return (R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1)+' km';
+      return (Rmi*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(1)+' mi';
     }
 
     function render(places){
       statusEl.textContent = places.length ? `Found ${places.length} places` : 'No results';
 
       resultsEl.innerHTML = places.map(p => {
-        const distance = km(CURRENT_COORDS, p.location);
+        const distance = miles(CURRENT_COORDS, p.location);
         const img = p.photo_ref ? `${FN_PHOTO}?ref=${encodeURIComponent(p.photo_ref)}&maxwidth=900` : '';
+        const tags = (p.types||[]).slice(0,4)
+                     .map(t => `#${t.replace(/_/g,'')}`)
+                     .map(t => `<a href="#" data-term="${t.slice(1)}">${t}</a>`)
+                     .join(' ');
         return `
-          <button class="card" data-id="${p.place_id}">
+          <div class="card" data-id="${p.place_id}">
             ${img ? `<img class="img" src="${img}" alt="" />` : `<div class="img"></div>`}
             <div class="pad">
               <div class="title">
@@ -155,17 +193,43 @@
                 <div class="price">${dollars(p.price_level)}</div>
               </div>
               <div class="meta">★ ${p.rating ?? '—'} · ${p.user_ratings_total ?? 0} · ${distance}</div>
-              <div class="rowBetween">
-                <div class="meta">${(p.types||[]).slice(0,2).join(', ')}</div>
-                <button class="cta">Customize</button>
+              <div class="rowBetween" style="margin-top:6px">
+                <div class="meta tags">${tags}</div>
+                <button class="cta customize" type="button">Customize</button>
               </div>
             </div>
-          </button>
+          </div>
         `;
       }).join('');
 
+      // Card click = open details (except when clicking a hashtag)
       [...resultsEl.querySelectorAll('.card')].forEach(el => {
-        el.addEventListener('click', () => showDetails(el.dataset.id));
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.tags')) return; // hashtags handled below
+          showDetails(el.dataset.id);
+        });
+      });
+
+      // Customize button opens details (for now)
+      [...resultsEl.querySelectorAll('.customize')].forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.closest('.card')?.dataset.id;
+          if (id) showDetails(id);
+        });
+      });
+
+      // Hashtags: click → fill search → run search
+      [...resultsEl.querySelectorAll('.tags a')].forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const term = a.getAttribute('data-term');
+          if (term) {
+            q.value = term;
+            onSearch();
+          }
+        });
       });
     }
 
@@ -182,6 +246,7 @@
           return;
         }
         const img = d.photo_ref ? `${FN_PHOTO}?ref=${encodeURIComponent(d.photo_ref)}&maxwidth=1200` : '';
+        const hours = d.opening_hours?.weekday_text ? d.opening_hours.weekday_text.join('<br/>') : '';
         detailEl.innerHTML = `
           <div class="card" style="border-color:#ccc">
             ${img ? `<img class="img" src="${img}" alt="" style="height:220px" />` : ''}
@@ -193,7 +258,7 @@
               <div class="meta">★ ${d.rating ?? '—'} · ${d.user_ratings_total ?? 0}</div>
               <div class="meta">${d.address ?? ''}</div>
               <div class="meta">${d.phone ? '☎︎ ' + d.phone : ''} ${d.website ? ` • <a href="${d.website}" target="_blank" rel="noopener">Website</a>` : ''}</div>
-              ${d.opening_hours?.weekday_text ? `<div class="meta" style="margin-top:6px">${d.opening_hours.weekday_text.join('<br/>')}</div>` : ''}
+              ${hours ? `<div class="meta" style="margin-top:6px">${hours}</div>` : ''}
             </div>
           </div>
         `;
@@ -202,7 +267,7 @@
       }
     }
 
-    // Demo search on load (will re-run with your coords once RN posts them)
+    // Initial search
     q.value = 'sushi';
     onSearch();
   </script>
