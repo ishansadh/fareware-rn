@@ -6,9 +6,18 @@ export async function handler(event) {
   }
 
   try {
-    const { query, lat, lng, radius = 5000, pagetoken } = JSON.parse(event.body || '{}');
+    // read request body with filters
+    const {
+      query,
+      lat,
+      lng,
+      radius = 5000,     // meters
+      pagetoken,
+      openNow = 0,       // 0/1
+      maxprice           // 0..4 (0=$, 4=$$$$$)
+    } = JSON.parse(event.body || '{}');
 
-    // If not using Google's next_page_token, require query + coords
+    // If not using Google's next_page_token, we need query + coords
     if (!pagetoken && (!query || typeof lat !== 'number' || typeof lng !== 'number')) {
       return json(400, { error: 'query, lat, lng required (unless using pagetoken)' });
     }
@@ -17,24 +26,33 @@ export async function handler(event) {
     const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
 
     if (pagetoken) {
+      // fetch the next page
       url.searchParams.set('pagetoken', pagetoken);
     } else {
+      // initial page with filters
       url.searchParams.set('query', query);
       url.searchParams.set('location', `${lat},${lng}`);
-      url.searchParams.set('radius', String(radius));
+      url.searchParams.set('radius', String(radius)); // meters
+
+      // filters
+      if (openNow) url.searchParams.set('opennow', 'true');
+      if (Number.isInteger(maxprice)) url.searchParams.set('maxprice', String(maxprice)); // 0..4
+      // you can add more (e.g., type/keyword) if needed:
+      // url.searchParams.set('type', 'restaurant');
     }
+
     url.searchParams.set('key', key);
 
     const res = await fetch(url);
     const data = await res.json();
 
-    // Surface Google status back to the UI (very helpful when debugging)
+    // surface Google status for easy debugging
     const status = data.status || 'UNKNOWN';
     if (!['OK', 'ZERO_RESULTS'].includes(status)) {
       return json(200, { places: [], error: status, error_message: data.error_message || null });
     }
 
-    // Normalize the results we care about
+    // normalize results
     const places = (data.results || []).map(p => ({
       place_id: p.place_id,
       name: p.name,
@@ -44,7 +62,6 @@ export async function handler(event) {
       address: p.formatted_address,
       location: p.geometry?.location || null,
       types: p.types || [],
-      // include a photo reference so the UI can request an actual image via our photo proxy
       photo_ref: p.photos?.[0]?.photo_reference || null
     }));
 
